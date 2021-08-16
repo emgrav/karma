@@ -65,41 +65,26 @@ class KarmaBot(Plugin):
         self.config.load_and_update()
         self.karma_t, self.version = make_tables(self.database)
 
-    @command.new("karma", help="View users' karma or karma top lists")
+    @command.new("karma", help="View users' amount of cute or cuteness top lists.")
     async def karma(self) -> None:
         pass
 
-    @karma.subcommand("up", help="Upvote an event")
+    @karma.subcommand("up", help="Call an event cute")
     @command.argument("event_id", "Event ID", required=True)
     def upvote(self, evt: MessageEvent, event_id: EventID) -> Awaitable[None]:
         return self._vote(evt, event_id, +1)
 
-    @karma.subcommand("down", help="Downvote a message")
-    @command.argument("event_id", "Event ID", required=True)
-    def downvote(self, evt: MessageEvent, event_id: EventID) -> Awaitable[None]:
-        return self._vote(evt, event_id, -1)
 
     @command.passive(UPVOTE)
     def upvote(self, evt: MessageEvent, _: Tuple[str]) -> Awaitable[None]:
         return self._vote(evt, evt.content.get_reply_to(), +1)
 
-    @command.passive(DOWNVOTE)
-    def downvote(self, evt: MessageEvent, _: Tuple[str]) -> Awaitable[None]:
-        return self._vote(evt, evt.content.get_reply_to(), -1)
 
     @command.passive(regex=UPVOTE_EMOJI, field=lambda evt: evt.content.relates_to.key,
                      event_type=EventType.REACTION, msgtypes=None)
     def upvote_react(self, evt: ReactionEvent, key: Tuple[str]) -> Awaitable[None]:
         try:
             return self._vote(evt, evt.content.relates_to.event_id, 1)
-        except KeyError:
-            pass
-
-    @command.passive(regex=DOWNVOTE_EMOJI, field=lambda evt: evt.content.relates_to.key,
-                     event_type=EventType.REACTION, msgtypes=None)
-    def downvote_react(self, evt: ReactionEvent, key: Tuple[str]) -> Awaitable[None]:
-        try:
-            return self._vote(evt, evt.content.relates_to.event_id, -1)
         except KeyError:
             pass
 
@@ -110,11 +95,11 @@ class KarmaBot(Plugin):
             self.log.debug(f"Deleting {karma} due to redaction by {evt.sender}.")
             karma.delete()
 
-    @karma.subcommand("stats", help="View global karma statistics")
+    @karma.subcommand("stats", help="View global cute statistics")
     async def karma_stats(self, evt: MessageEvent) -> None:
         await evt.reply("Not yet implemented :(")
 
-    @karma.subcommand("view", help="View your or another users karma")
+    @karma.subcommand("view", help="View your or another users amount of cute")
     @command.argument("user", "user ID", required=False,
                       parser=lambda val: Client.parse_user_id(val) if val else None)
     async def view_karma(self, evt: MessageEvent, user: Optional[Tuple[str, str]]) -> None:
@@ -130,21 +115,21 @@ class KarmaBot(Plugin):
             word_to_be = "are"
         karma = self.karma_t.get_karma(mxid)
         if karma is None or karma.total is None:
-            await evt.reply(f"{name} {word_have} no karma :(")
+            await evt.reply(f"{name} {word_have} baseline amounts of cute")
             return
         index = self.karma_t.find_index_from_top(mxid)
-        await evt.reply(f"{name} {word_have} {karma.total} karma "
+        await evt.reply(f"{name} {word_have} {karma.total} cute "
                         f"(+{karma.positive}/-{karma.negative}) "
                         f"and {word_to_be} #{index + 1 or '∞'} on the top list.")
 
-    @karma.subcommand("export", help="Export the data of your karma")
+    @karma.subcommand("export", help="Export the data of your amount of cute")
     async def export_own_karma(self, evt: MessageEvent) -> None:
         karma_list = [karma.to_dict() for karma in self.karma_t.export(evt.sender)]
         data = json.dumps(karma_list).encode("utf-8")
         url = await self.client.upload_media(data, mime_type="application/json")
         await evt.reply(MediaMessageEventContent(
             msgtype=MessageType.FILE,
-            body=f"karma-{evt.sender}.json",
+            body=f"cute-{evt.sender}.json",
             url=url,
             info=FileInfo(
                 mimetype="application/json",
@@ -152,25 +137,17 @@ class KarmaBot(Plugin):
             )
         ))
 
-    @karma.subcommand("breakdown", help="View your karma breakdown")
+    @karma.subcommand("breakdown", help="View your cute breakdown")
     async def own_karma_breakdown(self, evt: MessageEvent) -> None:
         await evt.reply("Not yet implemented :(")
 
-    @karma.subcommand("top", help="View the highest rated users")
+    @karma.subcommand("top", help="View the cutest users")
     async def karma_top(self, evt: MessageEvent) -> None:
         await evt.reply(self._karma_user_list("top"))
 
-    @karma.subcommand("bottom", help="View the lowest rated users")
-    async def karma_bottom(self, evt: MessageEvent) -> None:
-        await evt.reply(self._karma_user_list("bottom"))
-
-    @karma.subcommand("best", help="View the highest rated messages")
+    @karma.subcommand("best", help="View the cutest messages")
     async def karma_best(self, evt: MessageEvent) -> None:
         await evt.reply(self._karma_message_list("best"))
-
-    @karma.subcommand("worst", help="View the lowest rated messages")
-    async def karma_worst(self, evt: MessageEvent) -> None:
-        await evt.reply(self._karma_message_list("worst"))
 
     def _parse_content(self, evt: Event) -> str:
         if not self.config["store_content"]:
@@ -206,18 +183,14 @@ class KarmaBot(Plugin):
         in_filter = evt.sender in self.config["filter"]
         if self.config["democracy"] == in_filter or sha1(evt.sender) in self.config["opt_out"]:
             if self.config["errors.filtered_users"] and isinstance(evt, MessageEvent):
-                await evt.reply("Sorry, you're not allowed to vote.")
+                await evt.reply("Sorry, you're not allowed to call things cute.")
             return
         if self.karma_t.is_vote_event(target):
             if self.config["errors.vote_on_vote"] and isinstance(evt, MessageEvent):
-                await evt.reply("Sorry, you can't vote on votes.")
+                await evt.reply("Sorry, you can't say the act of saying things are cute is cute.")
             return
         karma_target = await self.client.get_event(evt.room_id, target)
         if not karma_target:
-            return
-        if karma_target.sender == evt.sender and value > 0:
-            if self.config["errors.upvote_self"] and isinstance(evt, MessageEvent):
-                await evt.reply("Hey! You can't upvote yourself!")
             return
         karma_id = dict(given_to=karma_target.sender, given_by=evt.sender, given_in=evt.room_id,
                         given_for=karma_target.event_id)
@@ -228,7 +201,7 @@ class KarmaBot(Plugin):
         if existing is not None:
             if existing.value == value:
                 if self.config["errors.already_voted"] and isinstance(evt, MessageEvent):
-                    await evt.reply(f"You already {self._sign(value)}'d that message.")
+                    await evt.reply(f"You already said that message was cute.")
                 return
             existing.update(new_value=value)
         else:
@@ -250,10 +223,7 @@ class KarmaBot(Plugin):
     def _karma_user_list(self, list_type: str) -> Optional[str]:
         if list_type == "top":
             karma_list = self.karma_t.get_top_users()
-            message = "#### Highest karma\n\n"
-        elif list_type in ("bot", "bottom"):
-            karma_list = self.karma_t.get_bottom_users()
-            message = "#### Lowest karma\n\n"
+            message = "#### Highest amount of cute\n\n"
         else:
             return None
         message += "\n".join(
@@ -273,11 +243,7 @@ class KarmaBot(Plugin):
     def _karma_message_list(self, list_type: str) -> Optional[str]:
         if list_type == "best":
             karma_list = self.karma_t.get_best_events()
-            message = "#### Best messages\n\n"
-        elif list_type == "worst":
-            karma_list = self.karma_t.get_worst_events()
-            message = "#### Worst messages\n\n"
-        else:
+            message = "#### Cutest messages\n\n"
             return None
         message += "\n".join(self._message_text(index, event)
                              for index, event in enumerate(karma_list))
