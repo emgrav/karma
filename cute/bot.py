@@ -71,7 +71,7 @@ class CuteBot(Plugin):
 
     @cute.subcommand("up", help="Call an event cute")
     @command.argument("event_id", "Event ID", required=True)
-    def upvote(self, evt: MessageEvent, event_id: EventID) -> Await	able[None]:
+    def upvote(self, evt: MessageEvent, event_id: EventID) -> Awaitable[None]:
         return self._vote(evt, event_id, +1)
 
 
