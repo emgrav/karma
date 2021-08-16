@@ -24,13 +24,13 @@ from sqlalchemy.ext.declarative import declarative_base
 
 from mautrix.types import Event, UserID, EventID, RoomID
 
-EventKarmaStats = NamedTuple("EventKarmaStats", room_id=RoomID, event_id=EventID, sender=UserID,
+EventCuteStats = NamedTuple("EventCuteStats", room_id=RoomID, event_id=EventID, sender=UserID,
                              content=str, total=int, positive=int, negative=int)
-UserKarmaStats = NamedTuple("UserKarmaStats", user_id=UserID, total=int, positive=int, negative=int)
+UserCuteStats = NamedTuple("UserCuteStats", user_id=UserID, total=int, positive=int, negative=int)
 
 
-class Karma:
-    __tablename__ = "karma"
+class Cute:
+    __tablename__ = "cute"
     db: Engine = None
     t: Table = None
     c: ImmutableColumnCollection = None
@@ -46,17 +46,17 @@ class Karma:
     content: str = Column(Text)
 
     @classmethod
-    def get_best_events(cls, limit: int = 10) -> Iterable['EventKarmaStats']:
+    def get_best_events(cls, limit: int = 10) -> Iterable['EventCuteStats']:
         return cls.get_event_stats(direction=desc, limit=limit)
 
     @classmethod
-    def get_worst_events(cls, limit: int = 10) -> Iterable['EventKarmaStats']:
+    def get_worst_events(cls, limit: int = 10) -> Iterable['EventCuteStats']:
         return cls.get_event_stats(direction=asc, limit=limit)
 
     @classmethod
-    def get_event_stats(cls, direction, limit: int = 10) -> Iterable['EventKarmaStats']:
+    def get_event_stats(cls, direction, limit: int = 10) -> Iterable['EventCuteStats']:
         c = cls.c
-        return (EventKarmaStats(*row) for row in cls.db.execute(
+        return (EventCuteStats(*row) for row in cls.db.execute(
             select([c.given_in, c.given_for, c.given_to, c.content,
                     func.sum(c.value).label("total"),
                     func.sum(case([(c.value > 0, c.value)], else_=0)).label("positive"),
@@ -66,17 +66,17 @@ class Karma:
                 .limit(limit)))
 
     @classmethod
-    def get_top_users(cls, limit: int = 10) -> Iterable['UserKarmaStats']:
+    def get_top_users(cls, limit: int = 10) -> Iterable['UserCuteStats']:
         return cls.get_user_stats(direction=desc, limit=limit)
 
     @classmethod
-    def get_bottom_users(cls, limit: int = 10) -> Iterable['UserKarmaStats']:
+    def get_bottom_users(cls, limit: int = 10) -> Iterable['UserCuteStats']:
         return cls.get_user_stats(direction=asc, limit=limit)
 
     @classmethod
-    def get_user_stats(cls, direction, limit: int = 10) -> Iterable['UserKarmaStats']:
+    def get_user_stats(cls, direction, limit: int = 10) -> Iterable['UserCuteStats']:
         c = cls.c
-        return (UserKarmaStats(*row) for row in cls.db.execute(
+        return (UserCuteStats(*row) for row in cls.db.execute(
             select([c.given_to,
                     func.sum(c.value).label("total"),
                     func.sum(case([(c.value > 0, c.value)], else_=0)).label("positive"),
@@ -86,7 +86,7 @@ class Karma:
                 .limit(limit)))
 
     @classmethod
-    def get_karma(cls, user_id: UserID) -> Optional['UserKarmaStats']:
+    def get_Cute(cls, user_id: UserID) -> Optional['UserCuteStats']:
         c = cls.c
         rows = cls.db.execute(
             select([c.given_to,
@@ -95,7 +95,7 @@ class Karma:
                     func.abs(func.sum(case([(c.value < 0, c.value)], else_=0))).label("negative")]
                    ).where(c.given_to == user_id))
         try:
-            return UserKarmaStats(*next(rows))
+            return UserCuteStats(*next(rows))
         except StopIteration:
             return None
 
@@ -111,14 +111,14 @@ class Karma:
         return -1
 
     @classmethod
-    def all(cls, user_id: UserID) -> Iterable['Karma']:
+    def all(cls, user_id: UserID) -> Iterable['Cute']:
         return (cls(given_to=given_to, given_by=given_by, given_in=given_in, given_for=given_for,
                     given_from=given_from, given_at=given_at, value=value, content=content)
                 for given_to, given_by, given_in, given_for, given_from, given_at, value, content
                 in cls.db.execute(cls.t.select().where(cls.c.given_to == user_id)))
 
     @classmethod
-    def export(cls, user_id: UserID) -> Iterable['Karma']:
+    def export(cls, user_id: UserID) -> Iterable['Cute']:
         return (cls(given_to=given_to, given_by=given_by, given_in=given_in, given_for=given_for,
                     given_from=given_from, given_at=given_at, value=value, content=content)
                 for given_to, given_by, given_in, given_for, given_from, given_at, value, content
@@ -136,7 +136,7 @@ class Karma:
 
     @classmethod
     def get(cls, given_to: UserID, given_by: UserID, given_in: RoomID, given_for: Event
-            ) -> Optional['Karma']:
+            ) -> Optional['Cute']:
         rows = cls.db.execute(cls.t.select().where(and_(
             cls.c.given_to == given_to, cls.c.given_by == given_by,
             cls.c.given_in == given_in, cls.c.given_for == given_for)))
@@ -149,7 +149,7 @@ class Karma:
                    given_from=given_from, given_at=given_at, value=value, content=content)
 
     @classmethod
-    def get_by_given_from(cls, given_from: EventID) -> Optional['Karma']:
+    def get_by_given_from(cls, given_from: EventID) -> Optional['Cute']:
         rows = cls.db.execute(cls.t.select().where(cls.c.given_from == given_from))
         try:
             (given_to, given_by, given_in, given_for,
@@ -201,23 +201,23 @@ class Version:
     version: int = Column(Integer, primary_key=True)
 
 
-def make_tables(engine: Engine) -> Tuple[Type[Karma], Type[Version]]:
+def make_tables(engine: Engine) -> Tuple[Type[Cute], Type[Version]]:
     base = declarative_base()
 
-    class KarmaImpl(Karma, base):
+    class CuteImpl(Cute, base):
         __table__: Table
 
     class VersionImpl(Version, base):
         __table__: Table
 
     base.metadata.bind = engine
-    for table in KarmaImpl, VersionImpl:
+    for table in CuteImpl, VersionImpl:
         table.db = engine
         table.t = table.__table__
         table.c = table.__table__.c
-        table.Karma = KarmaImpl
+        table.Cute = CuteImpl
 
     # TODO replace with alembic
     base.metadata.create_all()
 
-    return KarmaImpl, VersionImpl
+    return CuteImpl, VersionImpl

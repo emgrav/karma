@@ -1,10 +1,10 @@
 maubot: 0.1.0
-id: xyz.maubot.karma
+id: sh.nao.maubot.cute
 version: 1.0.1
 license: AGPL-3.0-or-later
 modules:
-- karma
-main_class: KarmaBot
+  - cute
+main_class: CuteBot
 extra_files:
-- base-config.yaml
+  - base-config.yaml
 database: true

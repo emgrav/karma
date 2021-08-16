@@ -1,4 +1,4 @@
-# karma - A maubot plugin to track the karma of users.
+# cute - A maubot plugin to track the cute of users.
 # Copyright (C) 2019 Tulir Asokan
 #
 # This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ from mautrix.util.config import BaseProxyConfig, ConfigUpdateHelper
 from maubot import Plugin, MessageEvent
 from maubot.handlers import command, event
 
-from .db import make_tables, Karma, Version
+from .db import make_tables, Cute, Version
 
 UPVOTE_EMOJI = r"(?:\U0001F44D[\U0001F3FB-\U0001F3FF]?)"
 UPVOTE_EMOJI_SHORTHAND = r"(?:\:\+1\:)|(?:\:thumbsup\:)"
@@ -56,22 +56,22 @@ def sha1(val: str) -> str:
     return hashlib.sha1(val.encode("utf-8")).hexdigest()
 
 
-class KarmaBot(Plugin):
-    karma_t: Type[Karma]
+class CuteBot(Plugin):
+    cute_t: Type[Cute]
     version: Type[Version]
 
     async def start(self) -> None:
         await super().start()
         self.config.load_and_update()
-        self.karma_t, self.version = make_tables(self.database)
+        self.cute_t, self.version = make_tables(self.database)
 
-    @command.new("karma", help="View users' amount of cute or cuteness top lists.")
-    async def karma(self) -> None:
+    @command.new("cute", help="View users' amount of cute or cuteness top lists.")
+    async def cute(self) -> None:
         pass
 
-    @karma.subcommand("up", help="Call an event cute")
+    @cute.subcommand("up", help="Call an event cute")
     @command.argument("event_id", "Event ID", required=True)
-    def upvote(self, evt: MessageEvent, event_id: EventID) -> Awaitable[None]:
+    def upvote(self, evt: MessageEvent, event_id: EventID) -> Await	able[None]:
         return self._vote(evt, event_id, +1)
 
 
@@ -90,19 +90,19 @@ class KarmaBot(Plugin):
 
     @event.on(EventType.ROOM_REDACTION)
     async def redact(self, evt: RedactionEvent) -> None:
-        karma = self.karma_t.get_by_given_from(evt.redacts)
-        if karma:
-            self.log.debug(f"Deleting {karma} due to redaction by {evt.sender}.")
-            karma.delete()
+        cute = self.cute_t.get_by_given_from(evt.redacts)
+        if cute:
+            self.log.debug(f"Deleting {cute} due to redaction by {evt.sender}.")
+            cute.delete()
 
-    @karma.subcommand("stats", help="View global cute statistics")
-    async def karma_stats(self, evt: MessageEvent) -> None:
+    @cute.subcommand("stats", help="View global cute statistics")
+    async def cute_stats(self, evt: MessageEvent) -> None:
         await evt.reply("Not yet implemented :(")
 
-    @karma.subcommand("view", help="View your or another users amount of cute")
+    @cute.subcommand("view", help="View your or another users amount of cute")
     @command.argument("user", "user ID", required=False,
                       parser=lambda val: Client.parse_user_id(val) if val else None)
-    async def view_karma(self, evt: MessageEvent, user: Optional[Tuple[str, str]]) -> None:
+    async def view_cute(self, evt: MessageEvent, user: Optional[Tuple[str, str]]) -> None:
         if user is not None:
             mxid = UserID(f"@{user[0]}:{user[1]}")
             name = f"[{user[0]}](https://matrix.to/#/{mxid})"
@@ -113,19 +113,19 @@ class KarmaBot(Plugin):
             name = "You"
             word_have = "have"
             word_to_be = "are"
-        karma = self.karma_t.get_karma(mxid)
-        if karma is None or karma.total is None:
+        cute = self.cute_t.get_cute(mxid)
+        if cute is None or cute.total is None:
             await evt.reply(f"{name} {word_have} baseline amounts of cute")
             return
-        index = self.karma_t.find_index_from_top(mxid)
-        await evt.reply(f"{name} {word_have} {karma.total} cute "
-                        f"(+{karma.positive}/-{karma.negative}) "
+        index = self.cute_t.find_index_from_top(mxid)
+        await evt.reply(f"{name} {word_have} {cute.total} cute "
+                        f"(+{cute.positive}/-{cute.negative}) "
                         f"and {word_to_be} #{index + 1 or '∞'} on the top list.")
 
-    @karma.subcommand("export", help="Export the data of your amount of cute")
-    async def export_own_karma(self, evt: MessageEvent) -> None:
-        karma_list = [karma.to_dict() for karma in self.karma_t.export(evt.sender)]
-        data = json.dumps(karma_list).encode("utf-8")
+    @cute.subcommand("export", help="Export the data of your amount of cute")
+    async def export_own_cute(self, evt: MessageEvent) -> None:
+        cute_list = [cute.to_dict() for cute in self.cute_t.export(evt.sender)]
+        data = json.dumps(cute_list).encode("utf-8")
         url = await self.client.upload_media(data, mime_type="application/json")
         await evt.reply(MediaMessageEventContent(
             msgtype=MessageType.FILE,
@@ -137,17 +137,17 @@ class KarmaBot(Plugin):
             )
         ))
 
-    @karma.subcommand("breakdown", help="View your cute breakdown")
-    async def own_karma_breakdown(self, evt: MessageEvent) -> None:
+    @cute.subcommand("breakdown", help="View your cute breakdown")
+    async def own_cute_breakdown(self, evt: MessageEvent) -> None:
         await evt.reply("Not yet implemented :(")
 
-    @karma.subcommand("top", help="View the cutest users")
-    async def karma_top(self, evt: MessageEvent) -> None:
-        await evt.reply(self._karma_user_list("top"))
+    @cute.subcommand("top", help="View the cutest users")
+    async def cute_top(self, evt: MessageEvent) -> None:
+        await evt.reply(self._cute_user_list("top"))
 
-    @karma.subcommand("best", help="View the cutest messages")
-    async def karma_best(self, evt: MessageEvent) -> None:
-        await evt.reply(self._karma_message_list("best"))
+    @cute.subcommand("best", help="View the cutest messages")
+    async def cute_best(self, evt: MessageEvent) -> None:
+        await evt.reply(self._cute_message_list("best"))
 
     def _parse_content(self, evt: Event) -> str:
         if not self.config["store_content"]:
@@ -185,19 +185,19 @@ class KarmaBot(Plugin):
             if self.config["errors.filtered_users"] and isinstance(evt, MessageEvent):
                 await evt.reply("Sorry, you're not allowed to call things cute.")
             return
-        if self.karma_t.is_vote_event(target):
+        if self.cute_t.is_vote_event(target):
             if self.config["errors.vote_on_vote"] and isinstance(evt, MessageEvent):
                 await evt.reply("Sorry, you can't say the act of saying things are cute is cute.")
             return
-        karma_target = await self.client.get_event(evt.room_id, target)
-        if not karma_target:
+        cute_target = await self.client.get_event(evt.room_id, target)
+        if not cute_target:
             return
-        karma_id = dict(given_to=karma_target.sender, given_by=evt.sender, given_in=evt.room_id,
-                        given_for=karma_target.event_id)
-        anonymize = sha1(karma_target.sender) in self.config["opt_out"]
+        cute_id = dict(given_to=cute_target.sender, given_by=evt.sender, given_in=evt.room_id,
+                        given_for=cute_target.event_id)
+        anonymize = sha1(cute_target.sender) in self.config["opt_out"]
         if anonymize:
-            karma_id["given_to"] = ""
-        existing = self.karma_t.get(**karma_id)
+            cute_id["given_to"] = ""
+        existing = self.cute_t.get(**cute_id)
         if existing is not None:
             if existing.value == value:
                 if self.config["errors.already_voted"] and isinstance(evt, MessageEvent):
@@ -205,9 +205,9 @@ class KarmaBot(Plugin):
                 return
             existing.update(new_value=value)
         else:
-            karma = self.karma_t(**karma_id, given_from=evt.event_id, value=value,
-                                 content=self._parse_content(karma_target) if not anonymize else "")
-            karma.insert()
+            cute = self.cute_t(**cute_id, given_from=evt.event_id, value=value,
+                                 content=self._parse_content(cute_target) if not anonymize else "")
+            cute.insert()
         if isinstance(evt, MessageEvent):
             await evt.mark_read()
 
@@ -220,33 +220,33 @@ class KarmaBot(Plugin):
             return "Anonymous"
         return f"[{self._denotify(user_id)}](https://matrix.to/#/{user_id})"
 
-    def _karma_user_list(self, list_type: str) -> Optional[str]:
+    def _cute_user_list(self, list_type: str) -> Optional[str]:
         if list_type == "top":
-            karma_list = self.karma_t.get_top_users()
+            cute_list = self.cute_t.get_top_users()
             message = "#### Highest amount of cute\n\n"
         else:
             return None
         message += "\n".join(
-            f"{index + 1}. {self._user_link(karma.user_id)}: "
-            f"{self._sign(karma.total)} (+{karma.positive}/-{karma.negative})"
-            for index, karma in enumerate(karma_list) if karma.user_id)
+            f"{index + 1}. {self._user_link(cute.user_id)}: "
+            f"{self._sign(cute.total)} (+{cute.positive}/-{cute.negative})"
+            for index, cute in enumerate(cute_list) if cute.user_id)
         return message
 
     def _message_text(self, index, event) -> str:
         text = (f"{index + 1}. [Event](https://matrix.to/#/{event.room_id}/{event.event_id})"
                 f" by {self._user_link(event.sender)} with"
-                f" {self._sign(event.total)} karma (+{event.positive}/-{event.negative})\n")
+                f" {self._sign(event.total)} cute (+{event.positive}/-{event.negative})\n")
         if event.content and self.config["show_content"]:
             text += f"    \n    > {html.escape(event.content)}\n"
         return text
 
-    def _karma_message_list(self, list_type: str) -> Optional[str]:
+    def _cute_message_list(self, list_type: str) -> Optional[str]:
         if list_type == "best":
-            karma_list = self.karma_t.get_best_events()
+            cute_list = self.cute_t.get_best_events()
             message = "#### Cutest messages\n\n"
             return None
         message += "\n".join(self._message_text(index, event)
-                             for index, event in enumerate(karma_list))
+                             for index, event in enumerate(cute_list))
         return message
 
     @classmethod

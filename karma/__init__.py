@@ -1,1 +1,1 @@
-from .bot import KarmaBot
+from .bot import CuteBot
